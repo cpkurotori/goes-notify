@@ -199,7 +199,8 @@ if __name__ == '__main__':
                 time.sleep(30)
             if heartbeat_counter == 0 and settings.get("enable_heartbeat", False):
                 send_heartbeat(settings)
-                
-            time.sleep(settings.get("frequency_seconds", 10))
-            heartbeat_counter = (heartbeat_counter + 30) % (60 * 60)
+            
+            cron_frequency = settings.get("frequency_seconds", 10)
+            time.sleep(cron_frequency)
+            heartbeat_counter = (heartbeat_counter + cron_frequency) % (3 * 60 * 60)
     main(settings)
