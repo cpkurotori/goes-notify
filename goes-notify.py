@@ -25,7 +25,7 @@ from email.mime.multipart import MIMEMultipart
 from math import log
 
 EMAIL_TEMPLATE = """Appts Available: %s"""
-GOES_URL_FORMAT = 'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&limit=3&locationId={0}&minimum=1'
+GOES_URL_FORMAT = 'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&locationId={0}'
 
 def send_email(settings, recipient, subject, message):
     sender = settings.get('email_from')
