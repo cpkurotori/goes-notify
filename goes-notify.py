@@ -5,6 +5,7 @@
 import argparse
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import smtplib
 import sys
 import os
@@ -184,7 +185,7 @@ if __name__ == '__main__':
 
     # Configure File Logging
     if settings.get('logfile'):
-        handler = logging.FileHandler('%s/%s' % (pwd, settings.get('logfile')))
+        handler = RotatingFileHandler('%s/%s' % (pwd, settings.get('logfile')), maxBytes=5 * 1024 * 1024)
         handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s %(message)s'))
         handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(handler)
