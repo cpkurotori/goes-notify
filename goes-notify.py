@@ -30,10 +30,6 @@ GOES_URL_FORMAT = 'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&li
 def send_email(settings, recipient, subject, message):
     sender = settings.get('email_from')
     display_name = settings.get('email_display_name')
-    location_id = settings.get("enrollment_location_id")
-    location_name = settings.get("enrollment_location_name")
-    if not location_name:
-            location_name = location_id
 
     try:
         if settings.get('use_gmail'):
@@ -78,6 +74,12 @@ def notify_send_email(dates, current_apt, settings):
     message = EMAIL_TEMPLATE % (dates)
     sender = settings.get('email_from')
     recipient = settings.get('email_to', [sender])
+
+    # location_id = settings.get("enrollment_location_id")
+    # location_name = settings.get("enrollment_location_name")
+    # if not location_name:
+    #     location_name = location_id
+
     send_email(settings, recipient, subject, message)
 
 def send_heartbeat(settings):
@@ -91,6 +93,8 @@ def main(settings):
     try:
         # obtain the json from the web url
         data = requests.get(GOES_URL_FORMAT.format(settings['enrollment_location_id'])).json()
+
+        logging.debug(data)
 
     	# parse the json
         if not data:
@@ -108,6 +112,8 @@ def main(settings):
 
         if not dates:
             return False
+        
+        logging.info(data)
 
         hash = hashlib.md5(''.join(dates) + current_apt.strftime('%B %d, %Y @ %I:%M%p')).hexdigest()
         fn = "goes-notify_{0}.txt".format(hash)
@@ -183,11 +189,13 @@ if __name__ == '__main__':
         logging.error('Error loading settings from config.json file: %s' % e)
         sys.exit()
 
+    log_level = settings.get("log_level", "INFO")
+    logging.getLogger().setLevel(log_level)
     # Configure File Logging
     if settings.get('logfile'):
         handler = RotatingFileHandler('%s/%s' % (pwd, settings.get('logfile')), maxBytes=5 * 1024 * 1024)
         handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s %(message)s'))
-        handler.setLevel(logging.DEBUG)
+        handler.setLevel(log_level)
         logging.getLogger('').addHandler(handler)
 
     logging.debug('Running cron with arguments: %s' % arguments)
