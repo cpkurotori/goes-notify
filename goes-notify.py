@@ -3,7 +3,6 @@
 # Note: for setting up email with sendmail, see: http://linuxconfig.org/configuring-gmail-as-sendmail-email-relay
 
 import argparse
-import commands
 import json
 import logging
 import smtplib
@@ -12,6 +11,7 @@ import os
 import glob
 import requests
 import hashlib
+import time
 
 from datetime import datetime
 from os import path
@@ -23,12 +23,7 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from math import log
 
-EMAIL_TEMPLATE = """
-<p>Good news! New Global Entry appointment(s) available at %s on the following dates:</p>
-%s
-<p>Your current appointment is on %s</p>
-<p>If this sounds good, please sign in to https://ttp.cbp.dhs.gov/ to reschedule.</p>
-"""
+EMAIL_TEMPLATE = """Appts Available: %s"""
 GOES_URL_FORMAT = 'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&limit=3&locationId={0}&minimum=1'
 
 def notify_send_email(dates, current_apt, settings, use_gmail=False):
@@ -61,15 +56,9 @@ def notify_send_email(dates, current_apt, settings, use_gmail=False):
             if username:
                     server.login(username, password)
 
-        subject = "Alert: Global Entry interview openings are available"
+        subject = "Appts available"
 
-        dateshtml = '<ul>'
-        for d in dates:
-            dateshtml += "<li>" + d + "</li>"
-
-        dateshtml += "</ul>"
-
-        message = EMAIL_TEMPLATE % (location_name, dateshtml, current_apt.strftime('%B %d, %Y'))
+        message = EMAIL_TEMPLATE % (dates)
 
         msg = MIMEMultipart()
         msg['Subject'] = subject
@@ -84,12 +73,9 @@ def notify_send_email(dates, current_apt, settings, use_gmail=False):
 
         server.sendmail(sender, recipient, msg.as_string())
         server.quit()
-    except Exception:
+    except Exception as e:
         logging.exception('Failed to send succcess e-mail.')
         log(e)
-
-def notify_osx(msg):
-    commands.getstatusoutput("osascript -e 'display notification \"%s\" with title \"Global Entry Notifier\"'" % msg)
 
 def notify_sms(settings, dates):
     for avail_apt in dates: 
@@ -129,7 +115,7 @@ def main(settings):
     	# parse the json
         if not data:
             logging.info('No tests available.')
-            return
+            return False
 
         current_apt = datetime.strptime(settings['current_interview_date_str'], '%B %d, %Y')
         dates = []
@@ -141,7 +127,7 @@ def main(settings):
                     dates.append(dtp.strftime('%A, %B %d @ %I:%M%p'))
 
         if not dates:
-            return
+            return False
 
         hash = hashlib.md5(''.join(dates) + current_apt.strftime('%B %d, %Y @ %I:%M%p')).hexdigest()
         fn = "goes-notify_{0}.txt".format(hash)
@@ -170,6 +156,7 @@ def main(settings):
         notify_send_email(dates, current_apt, settings, use_gmail=settings.get('use_gmail'))
     if settings.get('twilio_account_sid'):
         notify_sms(settings, dates)
+    return True
 
 def _check_settings(config):
     required_settings = (
@@ -191,7 +178,7 @@ if __name__ == '__main__':
 
     # Configure Basic Logging
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format='%(levelname)s: %(asctime)s %(message)s',
         datefmt='%m/%d/%Y %I:%M:%S %p',
         stream=sys.stdout,
@@ -210,7 +197,7 @@ if __name__ == '__main__':
             settings = json.load(json_file)
 
             # merge args into settings IF they're True
-            for key, val in arguments.iteritems():
+            for key, val in arguments.items():
                 if not arguments.get(key): continue
                 settings[key] = val
 
@@ -229,4 +216,10 @@ if __name__ == '__main__':
 
     logging.debug('Running cron with arguments: %s' % arguments)
 
+    if settings.get("enable_cron", False):
+        while True:
+            found = main(settings)
+            if found:
+                time.sleep(30)
+            time.sleep(settings.get("frequency_seconds", 10))
     main(settings)
