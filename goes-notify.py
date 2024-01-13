@@ -86,36 +86,6 @@ def send_heartbeat(settings):
     recipient = [settings.get('heartbeat_email', sender)]
     send_email(settings, recipient, subject, message)
 
-def notify_sms(settings, dates):
-    for avail_apt in dates: 
-        try:
-            from twilio.rest import Client
-        except ImportError:
-            logging.warning('Trying to send SMS, but TwilioRestClient not installed. Try \'pip install twilio\'')
-            return
-
-        try:
-            account_sid = settings['twilio_account_sid']
-            auth_token = settings['twilio_auth_token']
-            from_number = settings['twilio_from_number']
-            to_number = settings['twilio_to_number']
-            assert account_sid and auth_token and from_number and to_number
-        except (KeyError, AssertionError):
-            logging.warning('Trying to send SMS, but one of the required Twilio settings is missing or empty')
-            return
-
-        location_id = settings.get("enrollment_location_id")
-        location_name = settings.get("enrollment_location_name")
-        if not location_name:
-            location_name = location_id
-
-        # Twilio logs annoyingly, silence that
-        logging.getLogger('twilio').setLevel(logging.WARNING)
-        client = Client(account_sid, auth_token)
-        body = 'New GOES appointment available at %s on %s' % (location_name, avail_apt)
-        logging.info('Sending SMS.')
-        client.messages.create(body=body, to=to_number, from_=from_number)
-
 def main(settings):
     try:
         # obtain the json from the web url
@@ -161,8 +131,6 @@ def main(settings):
 
     if not settings.get('no_email'):
         notify_send_email(dates, current_apt, settings)
-    if settings.get('twilio_account_sid'):
-        notify_sms(settings, dates)
     return True
 
 def _check_settings(config):
