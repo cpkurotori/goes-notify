@@ -26,5 +26,8 @@
   "twilio_to_number": "example: +18005551234",
 
   "enable_cron": true,
-  "frequency_seconds": 10
+  "frequency_seconds": 10,
+
+  "enable_heartbeat": true,
+  "heartbeat_email": ""
 }

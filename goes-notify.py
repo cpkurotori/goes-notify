@@ -26,17 +26,16 @@ from math import log
 EMAIL_TEMPLATE = """Appts Available: %s"""
 GOES_URL_FORMAT = 'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&limit=3&locationId={0}&minimum=1'
 
-def notify_send_email(dates, current_apt, settings, use_gmail=False):
+def send_email(settings, recipient, subject, message):
     sender = settings.get('email_from')
     display_name = settings.get('email_display_name')
-    recipient = settings.get('email_to', sender)  # If recipient isn't provided, send to self.
     location_id = settings.get("enrollment_location_id")
     location_name = settings.get("enrollment_location_name")
     if not location_name:
             location_name = location_id
 
     try:
-        if use_gmail:
+        if settings.get('use_gmail'):
             password = settings.get('gmail_password')
             if not password:
                 logging.warning('Trying to send from gmail, but password was not provided.')
@@ -56,10 +55,6 @@ def notify_send_email(dates, current_apt, settings, use_gmail=False):
             if username:
                     server.login(username, password)
 
-        subject = "Appts available"
-
-        message = EMAIL_TEMPLATE % (dates)
-
         msg = MIMEMultipart()
         msg['Subject'] = subject
         if display_name:
@@ -76,6 +71,20 @@ def notify_send_email(dates, current_apt, settings, use_gmail=False):
     except Exception as e:
         logging.exception('Failed to send succcess e-mail.')
         log(e)
+
+def notify_send_email(dates, current_apt, settings):
+    subject = "Appts available"
+    message = EMAIL_TEMPLATE % (dates)
+    sender = settings.get('email_from')
+    recipient = settings.get('email_to', [sender])
+    send_email(settings, recipient, subject, message)
+
+def send_heartbeat(settings):
+    subject = "Heartbeat"
+    message = "Global Entry is still running"
+    sender = settings.get('email_from')
+    recipient = [settings.get('heartbeat_email', sender)]
+    send_email(settings, recipient, subject, message)
 
 def notify_sms(settings, dates):
     for avail_apt in dates: 
@@ -150,10 +159,8 @@ def main(settings):
     msg = 'Found new appointment(s) in location %s on %s (current is on %s)!' % (location_name, dates[0], current_apt.strftime('%B %d, %Y @ %I:%M%p'))
     logging.info(msg + (' Sending email.' if not settings.get('no_email') else ' Not sending email.'))
 
-    if settings.get('notify_osx'):
-        notify_osx(msg)
     if not settings.get('no_email'):
-        notify_send_email(dates, current_apt, settings, use_gmail=settings.get('use_gmail'))
+        notify_send_email(dates, current_apt, settings)
     if settings.get('twilio_account_sid'):
         notify_sms(settings, dates)
     return True
@@ -217,9 +224,14 @@ if __name__ == '__main__':
     logging.debug('Running cron with arguments: %s' % arguments)
 
     if settings.get("enable_cron", False):
+        heartbeat_counter = 0
         while True:
             found = main(settings)
             if found:
                 time.sleep(30)
+            if heartbeat_counter == 0 and settings.get("enable_heartbeat", False):
+                send_heartbeat(settings)
+                
             time.sleep(settings.get("frequency_seconds", 10))
+            heartbeat_counter = (heartbeat_counter + 30) % (60 * 60)
     main(settings)
