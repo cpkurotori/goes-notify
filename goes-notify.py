@@ -8,19 +8,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 import smtplib
 import sys
-import os
-import glob
 import requests
-import hashlib
 import time
 
 from datetime import datetime
 from os import path
-from subprocess import check_output
-from distutils.spawn import find_executable
 from email.utils import formataddr
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from math import log
 
@@ -114,16 +108,6 @@ def main(settings):
             return False
         
         logging.info(data)
-
-        hash = hashlib.md5((''.join(dates) + current_apt.strftime('%B %d, %Y @ %I:%M%p')).encode()).hexdigest()
-        fn = "goes-notify_{0}.txt".format(hash)
-        if settings.get('no_spamming') and os.path.exists(fn):
-            return
-        else:
-            for f in glob.glob("goes-notify_*.txt"):
-                os.remove(f)
-            f = open(fn,"w")
-            f.close()
 
     except OSError:
         logging.critical("Something went wrong when trying to obtain the openings")
