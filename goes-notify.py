@@ -115,7 +115,7 @@ def main(settings):
         
         logging.info(data)
 
-        hash = hashlib.md5(''.join(dates) + current_apt.strftime('%B %d, %Y @ %I:%M%p')).hexdigest()
+        hash = hashlib.md5((''.join(dates) + current_apt.strftime('%B %d, %Y @ %I:%M%p')).encode()).hexdigest()
         fn = "goes-notify_{0}.txt".format(hash)
         if settings.get('no_spamming') and os.path.exists(fn):
             return
