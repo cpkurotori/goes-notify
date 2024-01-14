@@ -18,7 +18,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from math import log
 
-EMAIL_TEMPLATE = """Appts Available: %s"""
+EMAIL_TEMPLATE = """%s"""
 GOES_URL_FORMAT = 'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&locationId={0}'
 
 def send_email(settings, recipient, subject, message):
@@ -65,7 +65,7 @@ def send_email(settings, recipient, subject, message):
 
 def notify_send_email(dates, current_apt, settings):
     subject = "Appts available"
-    message = EMAIL_TEMPLATE % (dates)
+    message = EMAIL_TEMPLATE % ('\n'.join([d for d in dates if d]))
     sender = settings.get('email_from')
     recipient = settings.get('email_to', [sender])
 
