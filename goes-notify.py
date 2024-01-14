@@ -187,6 +187,7 @@ if __name__ == '__main__':
             _check_settings(settings)
     except Exception as e:
         logging.error('Error loading settings from config.json file: %s' % e)
+        send_email(settings, [settings.get('email_from')], "GOES Notify Failure", str(e))
         sys.exit()
 
     log_level = settings.get("log_level", "INFO")
